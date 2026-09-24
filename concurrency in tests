@@ -1,0 +1,39 @@
+package com.limiter.concurrent;
+
+import com.limiter.core.model.TokenBucket;
+import org.junit.jupiter.api.Test;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
+import static org.junit.jupiter.api.Assertions.*;
+
+public class RaceConditionTest {
+
+    @Test
+    public void testConcurrentConsumptionUnderHeavyLoad() throws InterruptedException {
+        int totalThreads = 100;
+        TokenBucket bucket = new TokenBucket(50, 10); // Capacity 50, refills 10/sec
+        ExecutorService executor = Executors.newFixedThreadPool(totalThreads);
+        CountDownLatch latch = new CountDownLatch(1);
+        AtomicInteger successfulRequests = new AtomicInteger(0);
+
+        for (int i = 0; i < totalThreads; i++) {
+            executor.submit(() -> {
+                try {
+                    latch.await(); // Block all threads until ready to burst
+                    if (bucket.tryConsume(1)) {
+                        successfulRequests.incrementAndGet();
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            });
+        }
+
+        latch.countDown(); // Unblock all threads simultaneously (simulating a burst)
+        executor.shutdown();
+        executor.awaitTermination(5, TimeUnit.SECONDS);
+
+        // Core validation: Even under race conditions, we must NEVER allow more than capacity
+        assertTrue(successfulRequests.get() <= 50, "Rate limiter breached under race conditions!");
+    }
+}
