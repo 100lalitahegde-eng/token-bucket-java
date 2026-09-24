@@ -1,0 +1,31 @@
+package com.limiter.core.model;
+
+public class TokenBucket {
+    private final long capacity;
+    private final long refillRatePerSecond;
+    private double availableTokens;
+    private long lastRefillTimestamp;
+
+    public TokenBucket(long capacity, long refillRatePerSecond) {
+        this.capacity = capacity;
+        this.refillRatePerSecond = refillRatePerSecond;
+        this.availableTokens = capacity;
+        this.lastRefillTimestamp = System.currentTimeMillis();
+    }
+
+    // Core algorithmic math: Refill tokens based on elapsed time delta
+    public synchronized boolean tryConsume(long tokensRequested) {
+        long now = System.currentTimeMillis();
+        double elapsedSeconds = (now - lastRefillTimestamp) / 1000.0;
+        
+        // Refill strategy
+        this.availableTokens = Math.min(capacity, availableTokens + (elapsedSeconds * refillRatePerSecond));
+        this.lastRefillTimestamp = now;
+
+        if (this.availableTokens >= tokensRequested) {
+            this.availableTokens -= tokensRequested;
+            return true;
+        }
+        return false;
+    }
+}
