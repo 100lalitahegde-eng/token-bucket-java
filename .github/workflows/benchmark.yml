@@ -1,5 +1,6 @@
 name: Benchmark baseline
 on:
+  workflow_dispatch:
   push:
     branches:
       - feature/keyed-benchmark-baseline
