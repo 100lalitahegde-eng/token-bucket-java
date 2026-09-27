@@ -1,0 +1,23 @@
+name: Benchmark baseline
+on:
+  push:
+    branches:
+      - feature/keyed-benchmark-baseline
+    paths:
+      - 'benchmarks/**'
+      - '.github/workflows/benchmark.yml'
+jobs:
+  baseline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - run: bash benchmarks/run.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: keyed-registry-jmh
+          path: benchmarks/results/
