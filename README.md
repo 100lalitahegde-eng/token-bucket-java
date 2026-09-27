@@ -43,7 +43,7 @@ The registry creates one bucket per key, up to `maxKeys`. Every attempt for a re
 
 ## Next design exercise
 
-Run the [benchmark harness](benchmarks/README.md) on a documented machine to collect hot-key, spread-key and full-registry throughput and sampled p95/p99 latency. Only then decide whether registry contention warrants a design change. If cluster-wide enforcement becomes necessary, use an atomic server-side operation and specify behaviour when storage is unavailable.
+See the [benchmark harness](benchmarks/README.md) and [exploratory runner results](PERFORMANCE.md) for hot-key, spread-key and full-registry throughput and sampled p95/p99 latency. Only then decide whether registry contention warrants a design change. If cluster-wide enforcement becomes necessary, use an atomic server-side operation and specify behaviour when storage is unavailable.
 
 ## Interview walkthrough
 
