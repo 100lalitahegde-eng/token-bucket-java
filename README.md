@@ -39,11 +39,11 @@ The registry creates one bucket per key, up to `maxKeys`. Every attempt for a re
 
 - `TokenBucketTest` checks burst exhaustion, partial refill, capacity ceiling, invalid input and 100 concurrent attempts with a frozen clock. Exactly 50 must succeed.
 - `KeyedTokenBucketLimiterTest` checks key isolation, registry exhaustion, exact idle eviction, activity after denial, invalid input and concurrent first use of one key.
-- GitHub Actions runs `mvn test` on pushes and pull requests.
+- GitHub Actions runs the tests and compiles the standalone JMH benchmark module on pushes and pull requests. It does not run performance measurements.
 
 ## Next design exercise
 
-Measure throughput and tail latency under hot and spread keys before changing the registry lock. If cluster-wide enforcement becomes necessary, use an atomic server-side operation and specify behaviour when storage is unavailable.
+Run the [benchmark harness](benchmarks/README.md) on a documented machine to collect hot-key, spread-key and full-registry throughput and sampled p95/p99 latency. Only then decide whether registry contention warrants a design change. If cluster-wide enforcement becomes necessary, use an atomic server-side operation and specify behaviour when storage is unavailable.
 
 ## Interview walkthrough
 
