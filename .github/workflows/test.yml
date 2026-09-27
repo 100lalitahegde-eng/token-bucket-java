@@ -12,4 +12,5 @@ jobs:
           distribution: temurin
           java-version: '17'
           cache: maven
-      - run: mvn -B test
+      - run: mvn -B install
+      - run: mvn -B -f benchmarks/pom.xml package
