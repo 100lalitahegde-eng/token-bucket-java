@@ -12,12 +12,16 @@ mkdir -p benchmarks/results
 
 mvn -B install
 mvn -B -f benchmarks/pom.xml package
-for threads in 1 4 16; do
+# Keep the default comparison within the CPUs visible to this process.
+cpus=$(getconf _NPROCESSORS_ONLN)
+threads=(1)
+if (( cpus >= 2 )); then threads+=(2); fi
+for count in "${threads[@]}"; do
   for mode in thrpt sample; do
     unit=s
     if [ "$mode" = sample ]; then unit=us; fi
     java -jar benchmarks/target/benchmarks.jar KeyedLimiterBenchmark \
-      -t "$threads" -bm "$mode" -tu "$unit" -rf json \
-      -rff "benchmarks/results/${mode}-t${threads}.json"
+      -t "$count" -bm "$mode" -tu "$unit" -rf json \
+      -rff "benchmarks/results/${mode}-t${count}.json"
   done
 done
