@@ -1,6 +1,6 @@
 # Exploratory keyed-registry benchmark — 27 September 2026
 
-Run: [GitHub Actions #36311129187](https://github.com/100lalitahegde-eng/token-bucket-java/actions/runs/36311129187). The run's `keyed-registry-jmh` artifact contains all six JMH JSON files and `environment.txt`. Commit: `198e5574e1e4866a0ab0535c34a065d559efc770`.
+Historical run: [GitHub Actions #36311129187](https://github.com/100lalitahegde-eng/token-bucket-java/actions/runs/36311129187). Its `keyed-registry-jmh` artifact contains six JMH JSON files and `environment.txt`. Commit: `198e5574e1e4866a0ab0535c34a065d559efc770`. The figures below belong to that commit and its original harness; they are not results from the revised default run.
 
 Environment: GitHub-hosted Ubuntu runner, Linux x86-64, 2 visible CPUs (AMD EPYC 7763), Temurin 17.0.20.1. JMH 1.37; two forks; three one-second warm-up and five one-second measurement iterations per fork. Throughput and sampled latency are separate runs. Figures below are rounded from the artifact.
 
@@ -16,6 +16,6 @@ Environment: GitHub-hosted Ubuntu runner, Linux x86-64, 2 visible CPUs (AMD EPYC
 | Full registry, absent key | 4 | 0.166 | 13.136 | 25.920 |
 | Full registry, absent key | 16 | 0.164 | 10.688 | 22.240 |
 
-The full-registry path is materially more expensive in this run: it scans 1,024 resident entries on every absent-key request. Spread keys also share the registry lock, so independent keys do not imply parallel consumption in this implementation. The 16-thread cases oversubscribe the runner's two visible CPUs. Sampled percentile estimates vary substantially with contention (for example, hot-key p95 at four threads exceeds its 16-thread p95); no monotonic scaling claim follows from this one runner run. Extreme pauses beyond p99 can make the sample mean exceed p99.
+In this run, the full-registry path scans 1,024 resident entries for each request for the fixed absent key. The spread workload pre-creates 64 keys but each worker repeatedly uses only one key selected by its thread index; every request still shares the registry lock. Four and sixteen threads both exceed the runner's two visible CPUs. These cases mix lock contention with CPU oversubscription and scheduling effects; they are not evidence of multicore scaling. Sampled percentile estimates vary substantially (for example, hot-key p95 at four threads exceeds its 16-thread p95). Extreme pauses beyond p99 can make the sample mean exceed p99.
 
-These are exploratory microbenchmarks, not service latency, capacity planning, or a production guarantee. Repeat on a controlled machine, with workload mix and CPU limits recorded, before selecting an optimisation. Enforcement remains within one JVM.
+The revised script defaults to one thread and, where at least two CPUs are visible, two threads. The workflow is manually dispatched and retains raw JSON and environment details as an artifact. No measurements of the revised default are reported here. These are exploratory one-JVM microbenchmarks, not service latency, capacity planning, or a production guarantee. Repeat on a controlled machine with workload mix, CPU limits, and background load recorded before selecting an optimisation. Enforcement remains within one JVM.
