@@ -3,7 +3,14 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 mkdir -p benchmarks/results
+# Remove only files produced by the default thread counts on a previous local run.
+rm -f benchmarks/results/{thrpt,sample}-t{1,2}.json
+cpus=$(getconf _NPROCESSORS_ONLN)
+threads=(1)
+if (( cpus >= 2 )); then threads+=(2); fi
 {
+  printf "Online processors (getconf): %s\\n" "$cpus"
+  printf "JMH threads: %s\\n" "${threads[*]}"
   date -u '+UTC: %Y-%m-%dT%H:%M:%SZ'
   java -version 2>&1
   uname -a
@@ -12,10 +19,6 @@ mkdir -p benchmarks/results
 
 mvn -B install
 mvn -B -f benchmarks/pom.xml package
-# Keep the default comparison within the CPUs visible to this process.
-cpus=$(getconf _NPROCESSORS_ONLN)
-threads=(1)
-if (( cpus >= 2 )); then threads+=(2); fi
 for count in "${threads[@]}"; do
   for mode in thrpt sample; do
     unit=s
