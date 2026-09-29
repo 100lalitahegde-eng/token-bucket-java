@@ -9,8 +9,8 @@ cpus=$(getconf _NPROCESSORS_ONLN)
 threads=(1)
 if (( cpus >= 2 )); then threads+=(2); fi
 {
-  printf "Online processors (getconf): %s\\n" "$cpus"
-  printf "JMH threads: %s\\n" "${threads[*]}"
+  printf "Online processors (getconf): %s\n" "$cpus"
+  printf "JMH threads: %s\n" "${threads[*]}"
   date -u '+UTC: %Y-%m-%dT%H:%M:%SZ'
   java -version 2>&1
   uname -a
