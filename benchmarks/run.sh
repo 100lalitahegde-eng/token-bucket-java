@@ -3,8 +3,8 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 mkdir -p benchmarks/results
-# Remove only files produced by the default thread counts on a previous local run.
-rm -f benchmarks/results/{thrpt,sample}-t{1,2}.json
+# Remove JMH JSON files with this script's naming pattern from prior local runs.
+rm -f benchmarks/results/{thrpt,sample}-t*.json
 cpus=$(getconf _NPROCESSORS_ONLN)
 threads=(1)
 if (( cpus >= 2 )); then threads+=(2); fi
