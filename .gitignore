@@ -1,0 +1,16 @@
+target/
+*.class
+
+# Benchmark output. The harness also ignores this path.
+benchmarks/results/
+
+# IDE and editor files
+.idea/
+*.iml
+.classpath
+.project
+.settings/
+.vscode/
+*.swp
+*~
+.DS_Store

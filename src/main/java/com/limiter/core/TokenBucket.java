@@ -30,9 +30,18 @@ public final class TokenBucket {
         this.lastRefill = nanoClock.getAsLong();
     }
 
+    /**
+     * Consumes {@code tokensRequested} tokens when the bucket currently holds them.
+     *
+     * @throws IllegalArgumentException if {@code tokensRequested} is not positive or exceeds capacity.
+     *         A request above capacity can never succeed, so it is rejected before refill.
+     */
     public synchronized boolean tryConsume(long tokensRequested) {
         if (tokensRequested <= 0) {
             throw new IllegalArgumentException("tokensRequested must be positive");
+        }
+        if (tokensRequested > capacity) {
+            throw new IllegalArgumentException("tokensRequested exceeds capacity");
         }
         refill();
         if (available < tokensRequested) return false;
