@@ -1,7 +1,7 @@
 package com.limiter.core;
 
-import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.LongSupplier;
@@ -9,6 +9,11 @@ import java.util.function.LongSupplier;
 /**
  * Bounded, process-local registry of token buckets. Registry operations are serialized so
  * eviction cannot replace a bucket while a request is consuming from it.
+ *
+ * <p>Entries are kept in access order. Idle eviction walks from the least-recently used
+ * entry and stops at the first entry that is still inside the idle window. While the clock
+ * is monotonic, that prefix is exactly the idle set, so a request does amortized O(1) work
+ * beyond the entries it actually removes.
  */
 public final class KeyedTokenBucketLimiter {
     public enum Result { ALLOWED, RATE_LIMITED, REGISTRY_FULL }
@@ -28,7 +33,7 @@ public final class KeyedTokenBucketLimiter {
     private final int maxKeys;
     private final long idleNanos;
     private final LongSupplier nanoClock;
-    private final Map<String, Entry> entries = new HashMap<>();
+    private final Map<String, Entry> entries = new LinkedHashMap<>(16, 0.75f, true);
 
     public KeyedTokenBucketLimiter(long capacity, double tokensPerSecond, int maxKeys, long idleNanos) {
         this(capacity, tokensPerSecond, maxKeys, idleNanos, System::nanoTime);
@@ -48,13 +53,24 @@ public final class KeyedTokenBucketLimiter {
         this.idleNanos = idleNanos;
     }
 
+    /**
+     * Consumes tokens for {@code key}, evicting idle entries first.
+     *
+     * @throws NullPointerException if {@code key} is null
+     * @throws IllegalArgumentException if {@code key} is blank, {@code tokensRequested} is not
+     *         positive, or {@code tokensRequested} exceeds capacity
+     */
     public synchronized Result tryConsume(String key, long tokensRequested) {
         Objects.requireNonNull(key, "key");
         if (key.isBlank()) throw new IllegalArgumentException("key must not be blank");
         if (tokensRequested <= 0) throw new IllegalArgumentException("tokensRequested must be positive");
+        if (tokensRequested > capacity) {
+            throw new IllegalArgumentException("tokensRequested exceeds capacity");
+        }
 
         long now = nanoClock.getAsLong();
         evictIdle(now);
+        // get moves a resident key to the most-recent end; lastAttempt is updated to match.
         Entry entry = entries.get(key);
         if (entry == null) {
             if (entries.size() >= maxKeys) return Result.REGISTRY_FULL;
@@ -66,7 +82,7 @@ public final class KeyedTokenBucketLimiter {
         return entry.bucket.tryConsume(tokensRequested) ? Result.ALLOWED : Result.RATE_LIMITED;
     }
 
-    /** Resident entries, including entries that have become idle but await the next new key. */
+    /** Resident entries, including entries that are idle until the next valid request. */
     public synchronized int size() {
         return entries.size();
     }
@@ -75,7 +91,13 @@ public final class KeyedTokenBucketLimiter {
         Iterator<Entry> iterator = entries.values().iterator();
         while (iterator.hasNext()) {
             long elapsed = now - iterator.next().lastAttempt;
-            if (elapsed >= idleNanos && elapsed >= 0) iterator.remove();
+            // Same predicate as a full scan. Access order matches last-attempt order when the
+            // clock is monotonic, so the first miss ends the walk.
+            if (elapsed >= idleNanos && elapsed >= 0) {
+                iterator.remove();
+            } else {
+                break;
+            }
         }
     }
 }

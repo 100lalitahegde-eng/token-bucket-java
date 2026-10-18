@@ -25,7 +25,15 @@ class TokenBucketTest {
         TokenBucket bucket = new TokenBucket(1, 1);
         assertThrows(IllegalArgumentException.class, () -> bucket.tryConsume(0));
         assertThrows(IllegalArgumentException.class, () -> bucket.tryConsume(-1));
-        assertFalse(bucket.tryConsume(2));
+        assertThrows(IllegalArgumentException.class, () -> bucket.tryConsume(2));
+    }
+
+    @Test void rejectsRequestAboveCapacityWithoutConsuming() {
+        AtomicLong clock = new AtomicLong();
+        TokenBucket bucket = new TokenBucket(5, 1, clock::get);
+        assertThrows(IllegalArgumentException.class, () -> bucket.tryConsume(6));
+        assertTrue(bucket.tryConsume(5));
+        assertFalse(bucket.tryConsume(1));
     }
 
     @Test void simultaneousBurstCannotExceedCapacity() throws Exception {

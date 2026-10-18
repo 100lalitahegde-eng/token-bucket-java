@@ -1,21 +1,21 @@
-# Keyed registry performance baseline
+# Keyed registry benchmarks
 
-The standalone JMH module depends on the application JAR. From the repository root, run:
+The JMH module depends on the installed application JAR. From the repository root:
 
 ```bash
 bash benchmarks/run.sh
 ```
 
-The script runs three workloads at one thread and, if `getconf _NPROCESSORS_ONLN` reports at least two online processors, two threads. It runs throughput and sampled latency separately. JMH uses three one-second warm-up iterations, five one-second measurement iterations, and two forks. JSON output and environment details are written under `benchmarks/results/` (ignored by Git). The script records the Java version, OS and CPU details, online processor count and selected thread counts; record CPU governor, container limits and background load separately when relevant. Keep the full JSON beside any reported summary. Run the benchmark workflow manually to upload this directory as the `keyed-registry-jmh` artifact; test CI only compiles the module.
+The script runs three workloads at one thread and, when `getconf _NPROCESSORS_ONLN` reports at least two processors, at two threads. Throughput and sampled latency are separate runs. JMH uses three one-second warmup iterations, five one-second measurement iterations, and two forks. JSON and an environment record are written under `benchmarks/results/` (gitignored). The test workflow compiles this module. The benchmark workflow is manual and uploads `benchmarks/results/` as the `keyed-registry-jmh` artifact.
 
-| Workload | Shared registry state | What it exercises |
+| Workload | Registry state | What it measures |
 | --- | --- | --- |
-| `hotKey` | One active key | Contention on one key and the registry lock |
-| `spreadKeys` | 64 pre-created keys; each worker repeatedly uses one key selected by thread index | Several active keys still contending on the same registry lock |
-| `fullRegistryUnseenKey` | 1,024 resident keys; fixed absent key | Explicit `REGISTRY_FULL` path and a scan of 1,024 entries per request |
+| `hotKey` | One key | A single key under the registry lock |
+| `spreadKeys` | 64 pre-created keys; each worker repeats the key selected by its thread index | Several keys sharing one registry lock |
+| `fullRegistryUnseenKey` | 1,024 resident keys and one fixed absent key | The `REGISTRY_FULL` path |
 
-The limiter scans resident entries for idle eviction before every lookup, including hot and spread keys: one entry in `hotKey`, 64 in `spreadKeys`, and 1,024 in `fullRegistryUnseenKey`. The spread result therefore includes registry traversal as well as lock contention. Capacity and refill are high so the first two workloads predominantly exercise the allow path; confirm the result distribution for any changed parameters. `idleNanos = Long.MAX_VALUE` prevents normal eviction during a run. The full-registry workload repeatedly uses one absent key; it does not measure allocation of unique keys or steady-state eviction. Every measured call includes registry lookup and clock reads; the spread workload also includes array indexing.
+Idle time is `Long.MAX_VALUE`, so a run does not evict entries. Eviction walks from the least-recently used entry and stops at the first entry that is still active, which is one comparison on these workloads. Capacity and refill are high enough that `hotKey` and `spreadKeys` stay on the allow path. `fullRegistryUnseenKey` repeats one absent key. It does not allocate a new key per call, and it does not exercise steady-state eviction.
 
-For each workload and thread count, report throughput (operations/second) and sampled p95/p99 latency (microseconds), along with the environment, commit and raw JSON. These are separate JMH runs; do not treat them as simultaneous throughput and latency measurements. JMH sampling estimates a distribution rather than timing every call. Compare runs on the same machine and configuration, and rerun before interpreting small differences. The default uses at most two threads based on online processor count; CPU quotas and competing load may still oversubscribe available capacity. The shared lock, runner variability and one-JVM setup cannot establish scaling. Do not compare revised runs directly with the historical 1/4/16-thread report as if their conditions matched.
+Report throughput (operations/second) and sampled p95/p99 latency (microseconds) with the environment, the commit, and the raw JSON. Sampling estimates a distribution. The September 2026 table in [PERFORMANCE.md](../PERFORMANCE.md) used 1, 4, and 16 threads on a two-CPU runner, and that revision scanned every resident entry on each call. Compare it with runs of the same revision on a comparable host.
 
-These measurements describe this JVM and workload, not production service latency or cluster-wide enforcement. The registry remains process-local and serializes requests across keys.
+The measurements describe one JVM and this workload. Each process enforces its own limit.
